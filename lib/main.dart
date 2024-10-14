@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:handong_eats/screen/home/home_screen.dart';
 import 'package:handong_eats/screen/main_screen.dart';
 
 void main() {

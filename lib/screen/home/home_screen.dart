@@ -1,16 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:handong_eats/screen/home/widget/menu_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  final List<Map<String, String>> foodItems = const [
-    {'image': 'assets/images/whopper.png', 'name': '와퍼'},
-    {'image': 'assets/images/whopper.png', 'name': '와퍼 주니어'},
-    {'image': 'assets/images/tteokbokki.jpg', 'name': '갓만든 떡볶이'},
-    {'image': 'assets/images/tteokbokki.jpg', 'name': '짜장 떡볶이'},
-    {'image': 'assets/images/jae-yuk.jpg', 'name': '제육덮밥'},
-    {'image': 'assets/images/sushi.jpg', 'name': '초밥'},
-    {'image': 'assets/images/chicken-salad.jpg', 'name': '닭가슴살 샐러드'},
+  // bad code :: must save in back-end
+  final List<Map<String, dynamic>> foodItems = const [
+    {
+      'menuId': 'menu_01',
+      'image': 'assets/images/whopper.png',
+      'name': '와퍼',
+      'cost': 6700,
+      'storeId': 'bugerking',
+      'storeName': '버거킹',
+      'amount': 1,
+      'options': [
+        {'name': '세트업', 'description': '콜라, 감자튀김', 'cost': 2000},
+        {'name': '페티 추가', 'cost': 500},
+      ],
+    },
+    {
+      'menuId': 'menu_02',
+      'image': 'assets/images/whopper.png',
+      'name': '와퍼 주니어',
+      'cost': 5700,
+      'storeId': 'bugerking',
+      'storeName': '버거킹',
+      'amount': 1,
+      'options': [
+        {'name': '세트업', 'description': '콜라, 감자튀김', 'cost': 2000},
+      ],
+    },
+    {
+      'menuId': 'menu_03',
+      'image': 'assets/images/tteokbokki.jpg',
+      'name': '갓만든 떡볶이',
+      'cost': 4000,
+      'amount': 1,
+      'storeId': 'bunsick',
+      'storeName': '분식',
+      'options': [
+        {'name': '튀김 추가', 'description': '오징어 튀김, 감자 튀김', 'cost': 2000},
+        {'name': '치즈 추가', 'cost': 2000},
+      ],
+    },
+    {
+      'menuId': 'menu_04',
+      'image': 'assets/images/tteokbokki.jpg',
+      'name': '짜장 떡볶이',
+      'storeName': '분식',
+      'cost': 4000,
+      'storeId': 'bunsick',
+      'amount': 1,
+    },
+    {
+      'menuId': 'menu_05',
+      'image': 'assets/images/jae-yuk.jpg',
+      'name': '제육덮밥',
+      'cost': 5000,
+      'storeId': 'bob',
+      'storeName': '따스한동',
+      'amount': 1,
+    },
+    {
+      'menuId': 'menu_06',
+      'image': 'assets/images/sushi.jpg',
+      'name': '초밥',
+      'cost': 9000,
+      'storeId': 'bob',
+      'storeName': '따스한동',
+      'amount': 1,
+    },
+    {
+      'menuId': 'menu_07',
+      'image': 'assets/images/chicken-salad.jpg',
+      'name': '닭가슴살 샐러드',
+      'cost': 6700,
+      'storeId': 'salad',
+      'storeName': '샐러디',
+      'amount': 1,
+    },
   ];
 
   @override
@@ -21,69 +90,14 @@ class HomeScreen extends StatelessWidget {
         itemCount: foodItems.length,
         itemBuilder: (context, index) {
           final foodItem = foodItems[index];
-          final imagePath = foodItem['image']!;
 
-          // 클릭 가능한 항목 결정
           bool isClickable = index < 2;
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Container(
-              clipBehavior: Clip.hardEdge,
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(10)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-              child: GestureDetector(
-                onTap: isClickable
-                    ? () {
-                        // 클릭 가능한 항목에서 클릭 이벤트 처리
-                        print("클릭된 항목: ${foodItem['name']}");
-                      }
-                    : null, // 비클릭 항목에서는 아무 동작도 하지 않음
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      clipBehavior: Clip.hardEdge,
-                      decoration: const BoxDecoration(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                      height: 100,
-                      width: 100,
-                      // 이미지에 컬러 필터 적용
-                      child: ColorFiltered(
-                        colorFilter: isClickable
-                            ? const ColorFilter.mode(
-                                Colors.transparent, BlendMode.multiply)
-                            : const ColorFilter.mode(
-                                Colors.grey, BlendMode.saturation), // 흑백 필터
-                        child: Image.asset(
-                          imagePath,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                            Icons.fastfood_outlined,
-                            size: 80,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      foodItem['name']!,
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: isClickable
-                            ? Colors.black
-                            : Colors.grey, // 클릭 가능 여부에 따른 텍스트 색상 변경
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                  ],
-                ),
-              ),
+            child: MenuWidget(
+              foodItem: foodItem,
+              isClickable: isClickable,
             ),
           );
         },
