@@ -24,7 +24,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   // 서버에서 주문 내역을 가져오는 함수
   Future<void> fetchOrderHistory() async {
-    const String apiUrl = 'http://10.0.2.2:3000/order/my';
+    const String apiUrl = 'http://127.0.0.1:3000/order/my';
 
     try {
       final String? accessToken = await getAccessToken();

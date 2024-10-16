@@ -73,7 +73,7 @@ class _PlaceSelectScreenState extends State<PlaceSelectScreen> {
 
   // 백엔드로 주문 데이터 전송하는 함수
   Future<void> submitOrder() async {
-    const String apiUrl = 'http://10.0.2.2:3000/order'; // 백엔드 주소
+    const String apiUrl = 'http://127.0.0.1:3000/order'; // 백엔드 주소
 
     // 장바구니 데이터를 SharedPreferences에서 가져오기
     List<Map<String, dynamic>> cartItems = await _getCartItems();

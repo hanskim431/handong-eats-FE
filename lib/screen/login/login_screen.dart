@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       isLoading = true; // 로그인 요청 중 로딩 표시
     });
 
-    final url = Uri.parse('http://10.0.2.2:3000/users/login'); // 로그인 API URL
+    final url = Uri.parse('http://127.0.0.1:3000/users/login'); // 로그인 API URL
     final body = jsonEncode({
       'userId': idController.text,
       'password': pwController.text,

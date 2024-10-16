@@ -1,12 +1,11 @@
 import 'dart:convert'; // JSON 인코딩/디코딩에 필요
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:handong_eats/screen/login/login_screen.dart';
-import 'package:handong_eats/util/util.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:handong_eats/screen/home/cart_screen.dart';
 import 'package:handong_eats/screen/main_screen.dart';
+import 'package:handong_eats/util/util.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DetailScreen extends StatefulWidget {
   final Map<String, dynamic> foodItem;
@@ -203,7 +202,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   fontSize: 18, fontWeight: FontWeight.w500),
                             ),
                             Text(
-                              '${foodCost + optionSelections.asMap().entries.fold(0, (total, entry) => total + (entry.value ? (widget.foodItem['options']?[entry.key]['cost'] as int ?? 0) : 0))} 원',
+                              '${foodCost + optionSelections.asMap().entries.fold(0, (total, entry) => total + (entry.value ? (widget.foodItem['options']?[entry.key]['cost'] as int) : 0))} 원',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w500,

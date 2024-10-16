@@ -17,6 +17,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  bool isLoggedIn = false; // 로그인 상태
   late int selectedIndex;
   String role = ""; // 사용자 role 변수
   final FlutterSecureStorage secureStorage =
@@ -37,6 +38,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         role = decodedToken['role']; // 토큰에서 role 값 추출
       });
+      isLoggedIn = true;
     }
   }
 
