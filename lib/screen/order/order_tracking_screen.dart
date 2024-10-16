@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:handong_eats/screen/main_screen.dart';
 import 'package:handong_eats/util/util.dart';
+import 'package:handong_eats/util/web_socket_util.dart';
 import 'package:http/http.dart' as http;
 
 class OrderTrackingScreen extends StatefulWidget {
@@ -15,6 +16,17 @@ class OrderTrackingScreen extends StatefulWidget {
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   dynamic recentOrder; // 주문 내역 리스트
   bool isLoading = true; // 로딩 상태 확인
+  final WebSocketUtil socketUtil = WebSocketUtil(); // 웹 소켓 유틸리티 인스턴스 생성
+
+  // 웹 소켓 연결 초기화
+  void _initializeSocketConnection() {
+    socketUtil.initializeSocketConnection('http://127.0.0.1:8765');
+
+    // 서버에서 받은 'navigation_status' 메시지 처리
+    socketUtil.on('navigation_status', (data) {
+      print('Received navigation status: $data');
+    });
+  }
 
   // 서버에서 주문 내역을 가져오는 함수
   Future<void> fetchOrderHistory() async {
@@ -98,9 +110,16 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   @override
+  void dispose() {
+    socketUtil.dispose(); // 소켓 연결 해제 및 자원 해제
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     fetchOrderHistory(); // 화면 로드 시 주문 내역 가져오기
+    _initializeSocketConnection();
   }
 
   // 주문 상태에 따른 UI 출력
@@ -184,6 +203,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       orderId: recentOrder['_id'],
                       orderStatus: 'Finished',
                     );
+
+                    switch (recentOrder['deliveryAddress']) {
+                      case '현동홀':
+                        socketUtil.emit('message', 'return_from_hyeondong');
+                        break;
+                      case '느헤미야홀':
+                        socketUtil.emit('message', 'return_from_nehemiah');
+                        break;
+                      case '오석관':
+                        socketUtil.emit('message', 'return_from_oseok');
+                        break;
+                      default:
+                        print('잘못된 배달지 입니다.');
+                    }
                   },
                   child: const Text('음식 수령 완료'),
                 ),
