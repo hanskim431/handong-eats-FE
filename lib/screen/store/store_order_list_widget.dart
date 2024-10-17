@@ -83,6 +83,7 @@ class _StoreOrderHistoryScreenState extends State<StoreOrderHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('주문 내역'),
         centerTitle: true,
       ),

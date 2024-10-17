@@ -48,7 +48,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       if (response.statusCode == 200) {
         if (response.body.isNotEmpty) {
           final dynamic order = jsonDecode(response.body);
-          print(order);
           setState(() {
             recentOrder = order; // 주문 내역 저장
             isLoading = false; // 로딩 완료
@@ -102,7 +101,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         });
       } else {
         print('Failed to $orderStatus order: ${response.statusCode}');
-        print('message: ${response.body}');
       }
     } catch (e) {
       print('Error: $e');
@@ -245,7 +243,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
-            "21분",
+            "1분",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
@@ -285,9 +283,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline),
+            icon: const Icon(Icons.refresh_outlined),
             onPressed: () {
-              // 도움말 버튼 클릭 시 기능
+              setState(() {
+                isLoading = true; // 로딩 상태로 전환
+              });
+              fetchOrderHistory(); // 주문 내역 다시 불러오기
             },
           ),
         ],

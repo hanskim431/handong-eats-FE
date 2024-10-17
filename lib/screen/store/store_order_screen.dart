@@ -171,8 +171,20 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('실시간 주문 처리'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_outlined),
+            onPressed: () {
+              setState(() {
+                isLoading = true; // 로딩 상태로 전환
+              });
+              fetchOrderHistory(); // 주문 내역 다시 불러오기
+            },
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

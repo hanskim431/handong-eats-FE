@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:handong_eats/screen/login/login_screen.dart';
 import 'package:handong_eats/screen/main_screen.dart';
 import 'package:handong_eats/screen/order/widget/order_list_widget.dart';
 import 'package:handong_eats/util/util.dart' as util;
+import 'package:http/http.dart' as http;
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -15,11 +18,14 @@ class MoreScreen extends StatefulWidget {
 class _MoreScreenState extends State<MoreScreen> {
   final storage = const FlutterSecureStorage(); // SecureStorage 인스턴스
   bool isLoggedIn = false; // 로그인 상태
+  bool isLoading = true; // 로딩 상태 확인
+  dynamic userInfo; // 주문 내역 리스트
 
   @override
   void initState() {
     super.initState();
     checkLoginStatus(); // 로그인 상태 확인
+    fetchUserInfo();
   }
 
   // 로그인 상태 확인
@@ -41,6 +47,43 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
+  // 서버에서 주문 내역을 가져오는 함수
+  Future<void> fetchUserInfo() async {
+    const String apiUrl = 'http://127.0.0.1:3000/users';
+
+    try {
+      final String? accessToken = await util.getAccessToken();
+
+      if (accessToken == null) {
+        print('AccessToken이 없습니다.');
+        return;
+      }
+
+      final response = await http.get(Uri.parse(apiUrl), headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      });
+
+      if (response.statusCode == 200) {
+        final dynamic user = jsonDecode(response.body);
+        setState(() {
+          userInfo = user; // 주문 내역 저장
+          isLoading = false; // 로딩 완료
+        });
+      } else {
+        print('Failed to load user: ${response.statusCode}');
+        setState(() {
+          isLoading = false; // 로딩 실패 시에도 상태 갱신
+        });
+      }
+    } catch (e) {
+      print('Error: $e');
+      setState(() {
+        isLoading = false; // 에러 발생 시 로딩 상태 갱신
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,10 +94,10 @@ class _MoreScreenState extends State<MoreScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 한동 Pay 잔액 표시
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                const Text(
                   '한동 Pay',
                   style: TextStyle(
                     fontSize: 24,
@@ -62,8 +105,10 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                 ),
                 Text(
-                  '20,000원',
-                  style: TextStyle(
+                  userInfo != null && userInfo['point'] != null
+                      ? '${userInfo['point']} 포인트'
+                      : '0 포인트', // userInfo 또는 point 값이 없을 경우 기본값으로 '0'을 출력
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
                   ),
