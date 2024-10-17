@@ -15,6 +15,7 @@ class StoreOrderScreen extends StatefulWidget {
 class _StoreOrderScreenState extends State<StoreOrderScreen> {
   dynamic recentOrder; // 주문 내역 리스트
   bool isLoading = true; // 로딩 상태 확인
+  bool isGoToStoreDone = false; // go_to_store 완료 여부
   final WebSocketUtil socketUtil = WebSocketUtil(); // 웹 소켓 유틸리티 인스턴스 생성
 
   @override
@@ -31,6 +32,11 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
     // 서버에서 받은 'navigation_status' 메시지 처리
     socketUtil.on('navigation_status', (data) {
       print('Received navigation status: $data');
+      if (data == '[go_to_store] Done') {
+        setState(() {
+          isGoToStoreDone = true; // 음식 탑재 완료 버튼을 활성화하기 위한 플래그 설정
+        });
+      }
     });
   }
 
@@ -150,11 +156,19 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
           ),
         ],
       );
-    } else if (recentOrder['orderStatus'] == 'Accepted') {
+    } else if (recentOrder['orderStatus'] == 'Accepted' && isGoToStoreDone) {
+      // go_to_store가 완료된 경우에만 버튼 활성화
       return Center(
         child: ElevatedButton(
           onPressed: handleFoodLoaded,
           child: const Text('음식 탑재 완료'),
+        ),
+      );
+    } else if (recentOrder['orderStatus'] == 'Accepted' && !isGoToStoreDone) {
+      return Center(
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Text('아직 로봇이 오고 있어요'),
         ),
       );
     }
