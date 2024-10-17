@@ -37,6 +37,13 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
           isGoToStoreDone = true; // 음식 탑재 완료 버튼을 활성화하기 위한 플래그 설정
         });
       }
+
+      // 목적지 도착 후 처리
+      if (data == '[go_to_hyeondong] Done' ||
+          data == '[go_to_nehemiah] Done' ||
+          data == '[go_to_oseok] Done') {
+        _handleArrivalAtDestination();
+      }
     });
   }
 
@@ -109,6 +116,16 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
       }
     } catch (e) {
       print('Error: $e');
+    }
+  }
+
+  // 목적지 도착 후 처리
+  Future<void> _handleArrivalAtDestination() async {
+    await fetchOrderHistory(); // 현재 주문 내역을 다시 가져오기
+
+    if (recentOrder != null && recentOrder['orderStatus'] == 'Delivering') {
+      // 주문 상태가 Delivering이면 상태를 waitingAtDestination으로 변경
+      changeOrderStatus(recentOrder['_id'], 'waitingAtDestination');
     }
   }
 
