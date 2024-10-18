@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:handong_eats/screen/main_screen.dart';
 import 'package:handong_eats/util/util.dart';
@@ -14,74 +13,97 @@ class OrderTrackingScreen extends StatefulWidget {
 }
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
-  dynamic recentOrder; // 주문 내역 리스트
-  bool isLoading = true; // 로딩 상태 확인
-  final WebSocketUtil socketUtil = WebSocketUtil(); // 웹 소켓 유틸리티 인스턴스 생성
+  dynamic recentOrder;
+  bool isLoading = true;
+  bool isGoToStoreDone = false;
+  final WebSocketUtil socketUtil = WebSocketUtil();
 
-  // 웹 소켓 연결 초기화
+  @override
+  void initState() {
+    super.initState();
+    _loadOrderHistory();
+    _initializeSocketConnection();
+  }
+
   void _initializeSocketConnection() {
     socketUtil.initializeSocketConnection('http://127.0.0.1:8765');
-
-    // 서버에서 받은 'navigation_status' 메시지 처리
     socketUtil.on('navigation_status', (data) {
-      print('Received navigation status: $data');
+      _handleNavigationStatus(data);
     });
   }
 
-  // 서버에서 주문 내역을 가져오는 함수
-  Future<void> fetchOrderHistory() async {
-    const String apiUrl = 'http://127.0.0.1:3000/order/my/recent';
-
-    try {
-      final String? accessToken = await getAccessToken(); // util에서 토큰 가져오기
-
-      if (accessToken == null) {
-        print('AccessToken이 없습니다.');
-        return;
-      }
-
-      final response = await http.get(Uri.parse(apiUrl), headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      });
-
-      if (response.statusCode == 200) {
-        if (response.body.isNotEmpty) {
-          final dynamic order = jsonDecode(response.body);
-          setState(() {
-            recentOrder = order; // 주문 내역 저장
-            isLoading = false; // 로딩 완료
-          });
-        }
-      } else {
-        print('Failed to load order history: ${response.statusCode}');
-        setState(() {
-          isLoading = false; // 로딩 실패 시에도 상태 갱신
-        });
-      }
-    } catch (e) {
-      print('Error: $e');
+  void _handleNavigationStatus(String data) {
+    print('Received navigation status: $data');
+    if (data == '[go_to_store] Done') {
       setState(() {
-        isLoading = false; // 에러 발생 시 로딩 상태 갱신
+        isGoToStoreDone = true;
       });
+    }
+    if (data.contains('Done')) {
+      _handleArrivalAtDestination();
     }
   }
 
-  // 주문 상태 변경 함수
-  Future<void> changeOrderstatus({
+  Future<void> _loadOrderHistory() async {
+    setState(() => isLoading = true);
+    final order = await _fetchOrderFromServer();
+    setState(() {
+      recentOrder = order;
+      isLoading = false;
+    });
+  }
+
+  Future<dynamic> _fetchOrderFromServer() async {
+    const String apiUrl = 'http://127.0.0.1:3000/order/my/recent';
+    final String? accessToken = await getAccessToken();
+
+    if (accessToken == null) {
+      print('AccessToken이 없습니다.');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        return jsonDecode(response.body);
+      } else {
+        print('Failed to load order history: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _handleArrivalAtDestination() async {
+    if (recentOrder != null && recentOrder['orderStatus'] == 'Delivering') {
+      await _changeOrderStatusWithLoading(
+        orderId: recentOrder['_id'],
+        orderStatus: 'waitingAtDestination',
+      );
+    }
+  }
+
+  Future<void> _changeOrderStatus({
     required String orderId,
     required String orderStatus,
   }) async {
-    const String apiUrl = 'http://127.0.0.1:3000/order/status'; // 주문 수락 API
+    const String apiUrl = 'http://127.0.0.1:3000/order/status';
+    final String? accessToken = await getAccessToken();
+
+    if (accessToken == null) {
+      print('AccessToken이 없습니다.');
+      return;
+    }
 
     try {
-      final String? accessToken = await getAccessToken();
-
-      if (accessToken == null) {
-        print('AccessToken이 없습니다.');
-        return;
-      }
-
       final response = await http.patch(
         Uri.parse(apiUrl),
         headers: {
@@ -97,7 +119,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       if (response.statusCode == 200) {
         print('Order $orderStatus successfully');
         setState(() {
-          recentOrder = null; // 주문 처리 후 초기화
+          recentOrder = null;
         });
       } else {
         print('Failed to $orderStatus order: ${response.statusCode}');
@@ -107,49 +129,68 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    socketUtil.dispose(); // 소켓 연결 해제 및 자원 해제
-    super.dispose();
+  Future<void> _changeOrderStatusWithLoading({
+    required String orderId,
+    required String orderStatus,
+  }) async {
+    setState(() => isLoading = true);
+    await Future.delayed(const Duration(seconds: 1));
+    await _changeOrderStatus(orderId: orderId, orderStatus: orderStatus);
+    await _loadOrderHistory();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    fetchOrderHistory(); // 화면 로드 시 주문 내역 가져오기
-    _initializeSocketConnection();
+  void _handleFoodReceived() {
+    _changeOrderStatusWithLoading(
+      orderId: recentOrder['_id'],
+      orderStatus: 'Finished',
+    );
+    _emitReturnMessage();
   }
 
-  // 주문 상태에 따른 UI 출력
+  void _emitReturnMessage() {
+    final deliveryAddress = recentOrder['deliveryAddress'];
+    switch (deliveryAddress) {
+      case '현동홀':
+        socketUtil.emit('message', 'return_from_hyeondong');
+        break;
+      case '느헤미야홀':
+        socketUtil.emit('message', 'return_from_nehemiah');
+        break;
+      case '오석관':
+        socketUtil.emit('message', 'return_from_oseok');
+        break;
+      default:
+        print('잘못된 배달지 입니다.');
+    }
+  }
+
   Widget _buildOrderStatusUI() {
     if (recentOrder == null) {
-      return const Center(
-        child: Text('현재 주문 내역이 없습니다.'),
-      );
+      return const Center(child: Text('현재 주문 내역이 없습니다.'));
     }
 
     switch (recentOrder['orderStatus']) {
       case 'Rejected':
-        return _buildDeliveryUI(
+        return _buildDeliveryStatusUI(
           message: "주문이 거절되었습니다. 😔",
         );
       case 'Pending':
-        return _buildDeliveryUI(
+        return _buildDeliveryStatusUI(
           message: "판매자의 수락을 기다리고 있습니다. ⌛",
         );
       case 'waitingFood':
       case 'Accepted':
-        return _buildDeliveryUI(
+        return _buildDeliveryStatusUI(
           message: "음식을 기다리고 있습니다. 🍜",
           subMessage: '맛있게 만들어 드린대요!',
         );
       case 'Delivering':
-        return _buildDeliveryUI(
+        return _buildDeliveryStatusUI(
           message: "배달중이에요. 🚚",
           subMessage: '빠르게 가져다 드릴게요',
         );
       case 'waitingAtDestination':
-        return _buildDeliveryUI(
+        return _buildDeliveryStatusUI(
           message: "음식이 도착했습니다. 😋",
           subMessage: '식기전에 가져가주세요!!',
         );
@@ -158,8 +199,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  // 배달 진행 중인 경우 UI
-  Widget _buildDeliveryUI({required String message, String? subMessage}) {
+  Widget _buildDeliveryStatusUI({
+    required String message,
+    String? subMessage,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,16 +210,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           message,
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 5),
-        (subMessage != null)
-            ? Text(
-                subMessage,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              )
-            : const Text(
-                '',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
+        if (subMessage != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            subMessage,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ],
         const SizedBox(height: 20),
         _buildRemainingTime(),
         const SizedBox(height: 10),
@@ -184,50 +224,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         const SizedBox(height: 20),
         Expanded(
           child: Container(
-            color: Colors.grey[300], // 지도 이미지 대신 회색 박스
-            child: const Center(
-              child: Text("지도 이미지"),
-            ),
+            color: Colors.grey[300],
+            child: const Center(child: Text("지도 이미지")),
           ),
         ),
         if (recentOrder['orderStatus'] == 'waitingAtDestination')
-          Center(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    changeOrderstatus(
-                      orderId: recentOrder['_id'],
-                      orderStatus: 'Finished',
-                    );
-
-                    switch (recentOrder['deliveryAddress']) {
-                      case '현동홀':
-                        socketUtil.emit('message', 'return_from_hyeondong');
-                        break;
-                      case '느헤미야홀':
-                        socketUtil.emit('message', 'return_from_nehemiah');
-                        break;
-                      case '오석관':
-                        socketUtil.emit('message', 'return_from_oseok');
-                        break;
-                      default:
-                        print('잘못된 배달지 입니다.');
-                    }
-                  },
-                  child: const Text('음식 수령 완료'),
-                ),
-              ],
-            ),
-          )
-        else
-          const SizedBox(height: 100)
+          _buildFoodReceivedButton(),
       ],
     );
   }
 
-  // 남은 시간 UI
+  Widget _buildFoodReceivedButton() {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _handleFoodReceived,
+            child: const Text('음식 수령 완료'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRemainingTime() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -251,13 +271,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
-  // 진행 바
   Widget _buildProgressIndicator({double value = 0.1}) {
     return LinearProgressIndicator(
-      value: value, // 남은 시간에 따라 조정
+      value: value,
       backgroundColor: Colors.grey,
       color: Colors.blue,
     );
+  }
+
+  @override
+  void dispose() {
+    socketUtil.dispose();
+    super.dispose();
   }
 
   @override
@@ -284,17 +309,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
-            onPressed: () {
-              setState(() {
-                isLoading = true; // 로딩 상태로 전환
-              });
-              fetchOrderHistory(); // 주문 내역 다시 불러오기
-            },
+            onPressed: _loadOrderHistory,
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator()) // 로딩 중일 때
+          ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: _buildOrderStatusUI(),
