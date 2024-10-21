@@ -13,7 +13,7 @@ class PlaceSelectScreen extends StatefulWidget {
 }
 
 class _PlaceSelectScreenState extends State<PlaceSelectScreen> {
-  String selectedAddress = "느헤미야홀"; // 선택된 배달지 기본값
+  String selectedAddress = "현동홀"; // 선택된 배달지 기본값
   SharedPreferences? prefs;
   final FlutterSecureStorage secureStorage =
       const FlutterSecureStorage(); // SecureStorage 인스턴스 생성
@@ -157,11 +157,9 @@ class _PlaceSelectScreenState extends State<PlaceSelectScreen> {
 
   // 배송지 이름과 위치 정보를 저장한 리스트
   final List<Map<String, dynamic>> deliveryPoints = [
-    {"name": "느헤미야홀", "position": const Offset(100, 120)},
-    {"name": "뉴턴홀", "position": const Offset(200, 150)},
-    {"name": "한동대학교", "position": const Offset(150, 200)},
-    {"name": "올네이션스홀", "position": const Offset(250, 250)},
-    {"name": "아이작홀", "position": const Offset(300, 100)},
+    {"name": "느헤미야홀", "position": const Offset(120, 50)},
+    {"name": "오석관", "position": const Offset(110, 150)},
+    {"name": "현동홀", "position": const Offset(200, 45)},
   ];
 
   // 클릭 시 선택된 배송지를 변경하는 함수
@@ -201,7 +199,7 @@ class _PlaceSelectScreenState extends State<PlaceSelectScreen> {
                 children: [
                   // 지도 이미지
                   Image.asset(
-                    'assets/images/map.png', // 실제 학교 지도 이미지 경로로 변경하세요
+                    'assets/images/map.png',
                     width: double.infinity,
                     height: 300,
                     fit: BoxFit.cover,
