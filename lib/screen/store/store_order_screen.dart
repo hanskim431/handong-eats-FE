@@ -39,9 +39,7 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
       setState(() {
         isGoToStoreDone = true;
       });
-    }
-
-    if (data.contains('Done')) {
+    } else if (data.contains('Done')) {
       _handleArrivalAtDestination();
     }
   }

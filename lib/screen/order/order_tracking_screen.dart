@@ -38,8 +38,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       setState(() {
         isGoToStoreDone = true;
       });
-    }
-    if (data.contains('Done')) {
+    } else if (data.contains('Done')) {
       _handleArrivalAtDestination();
     }
   }
