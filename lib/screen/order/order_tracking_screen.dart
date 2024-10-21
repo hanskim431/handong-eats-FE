@@ -222,9 +222,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _buildProgressIndicator(),
         const SizedBox(height: 20),
         Expanded(
-          child: Container(
-            color: Colors.grey[300],
-            child: const Center(child: Text("지도 이미지")),
+          child:
+              // 지도 이미지
+              Image.asset(
+            'assets/images/map.png',
+            width: double.infinity,
+            height: 300,
+            fit: BoxFit.cover,
           ),
         ),
         if (recentOrder['orderStatus'] == 'waitingAtDestination')
