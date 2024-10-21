@@ -45,14 +45,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   Future<void> _loadOrderHistory() async {
     setState(() => isLoading = true);
-    final order = await _fetchOrderFromServer();
+    final order = await _fetchRecentOrder();
     setState(() {
       recentOrder = order;
       isLoading = false;
     });
   }
 
-  Future<dynamic> _fetchOrderFromServer() async {
+  Future<dynamic> _fetchRecentOrder() async {
     const String apiUrl = 'http://127.0.0.1:3000/order/my/recent';
     final String? accessToken = await getAccessToken();
 
@@ -61,6 +61,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       return null;
     }
 
+    return await _fetchApiData(apiUrl, accessToken);
+  }
+
+  Future<dynamic> _fetchApiData(String apiUrl, String accessToken) async {
     try {
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -69,6 +73,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           'Authorization': 'Bearer $accessToken',
         },
       );
+
       if (response.statusCode == 200 && response.body.isNotEmpty) {
         return jsonDecode(response.body);
       } else {
@@ -81,13 +86,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  Future<void> _handleArrivalAtDestination() async {
-    if (recentOrder != null && recentOrder['orderStatus'] == 'Delivering') {
-      await _changeOrderStatusWithLoading(
-        orderId: recentOrder['_id'],
-        orderStatus: 'waitingAtDestination',
-      );
-    }
+  // 주문 상태 변경 함수 (로딩 상태 포함)
+  Future<void> _changeOrderStatusWithLoading({
+    required String orderId,
+    required String orderStatus,
+  }) async {
+    setState(() => isLoading = true);
+    await Future.delayed(const Duration(seconds: 1));
+    await _changeOrderStatus(orderId: orderId, orderStatus: orderStatus);
+    await _loadOrderHistory();
   }
 
   Future<void> _changeOrderStatus({
@@ -128,14 +135,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  Future<void> _changeOrderStatusWithLoading({
-    required String orderId,
-    required String orderStatus,
-  }) async {
-    setState(() => isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    await _changeOrderStatus(orderId: orderId, orderStatus: orderStatus);
-    await _loadOrderHistory();
+  Future<void> _handleArrivalAtDestination() async {
+    if (recentOrder != null && recentOrder['orderStatus'] == 'Delivering') {
+      await _changeOrderStatusWithLoading(
+        orderId: recentOrder['_id'],
+        orderStatus: 'waitingAtDestination',
+      );
+    }
   }
 
   void _handleFoodReceived() {
@@ -148,18 +154,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   void _emitReturnMessage() {
     final deliveryAddress = recentOrder['deliveryAddress'];
-    switch (deliveryAddress) {
-      case '현동홀':
-        socketUtil.emit('message', 'return_from_hyeondong');
-        break;
-      case '느헤미야홀':
-        socketUtil.emit('message', 'return_from_nehemiah');
-        break;
-      case '오석관':
-        socketUtil.emit('message', 'return_from_oseok');
-        break;
-      default:
-        print('잘못된 배달지 입니다.');
+    const Map<String, String> returnMessages = {
+      '현동홀': 'return_from_hyeondong',
+      '느헤미야홀': 'return_from_nehemiah',
+      '오석관': 'return_from_oseok',
+    };
+
+    final message = returnMessages[deliveryAddress];
+    if (message != null) {
+      socketUtil.emit('message', message);
+    } else {
+      print('잘못된 배달지 입니다.');
     }
   }
 
@@ -222,9 +227,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _buildProgressIndicator(),
         const SizedBox(height: 20),
         Expanded(
-          child:
-              // 지도 이미지
-              Image.asset(
+          child: Image.asset(
             'assets/images/map.png',
             width: double.infinity,
             height: 300,

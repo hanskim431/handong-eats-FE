@@ -54,13 +54,18 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
   }
 
   Future<dynamic> _fetchOrderFromServer() async {
-    const apiUrl = 'http://127.0.0.1:3000/order/store/one';
+    const String apiUrl = 'http://127.0.0.1:3000/order/store/one';
     final String? accessToken = await getAccessToken();
+
     if (accessToken == null) {
       print('AccessToken이 없습니다.');
       return null;
     }
 
+    return await _fetchApiData(apiUrl, accessToken);
+  }
+
+  Future<dynamic> _fetchApiData(String apiUrl, String accessToken) async {
     try {
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -91,7 +96,7 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
   }
 
   Future<void> _changeOrderStatus(String orderId, String status) async {
-    const apiUrl = 'http://127.0.0.1:3000/order/status';
+    const String apiUrl = 'http://127.0.0.1:3000/order/status';
     final String? accessToken = await getAccessToken();
 
     if (accessToken == null) {
@@ -99,6 +104,11 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
       return;
     }
 
+    await _updateOrderStatus(apiUrl, accessToken, orderId, status);
+  }
+
+  Future<void> _updateOrderStatus(
+      String apiUrl, String accessToken, String orderId, String status) async {
     try {
       final response = await http.patch(
         Uri.parse(apiUrl),
@@ -106,8 +116,12 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
-        body: jsonEncode({'orderId': orderId, 'orderStatus': status}),
+        body: jsonEncode({
+          'orderId': orderId,
+          'orderStatus': status,
+        }),
       );
+
       if (response.statusCode != 200) {
         print('Failed to $status order: ${response.statusCode}');
         print('message: ${response.body}');
@@ -131,73 +145,78 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
 
   void _emitDeliveryLocation() {
     final deliveryAddress = recentOrder['deliveryAddress'];
-    switch (deliveryAddress) {
-      case '현동홀':
-        socketUtil.emit('message', 'go_to_hyeondong');
-        break;
-      case '느헤미야홀':
-        socketUtil.emit('message', 'go_to_nehemiah');
-        break;
-      case '오석관':
-        socketUtil.emit('message', 'go_to_oseok');
-        break;
-      default:
-        print('잘못된 배달지입니다.');
+    const deliveryMessages = {
+      '현동홀': 'go_to_hyeondong',
+      '느헤미야홀': 'go_to_nehemiah',
+      '오석관': 'go_to_oseok',
+    };
+
+    final message = deliveryMessages[deliveryAddress];
+    if (message != null) {
+      socketUtil.emit('message', message);
+    } else {
+      print('잘못된 배달지입니다.');
     }
   }
 
   // 주문 처리 버튼 생성 함수
   Widget _buildOrderActions() {
-    switch (recentOrder['orderStatus']) {
-      case 'Finish':
-        return const Text("완료된 주문 건 입니다.");
-      case 'Pending':
-        return _buildPendingActions();
-      case 'Accepted':
-        return isGoToStoreDone
-            ? _buildFoodLoadedButton()
-            : _buildAwaitingRobotButton();
-      default:
-        return Container();
-    }
+    if (recentOrder == null) return Container();
+
+    return switch (recentOrder['orderStatus']) {
+      'Finish' => const Text("완료된 주문 건 입니다."),
+      'Pending' => _buildPendingActions(),
+      'Accepted' => isGoToStoreDone
+          ? _buildFoodLoadedButton()
+          : _buildAwaitingRobotButton(),
+      _ => Container(),
+    };
   }
 
   Widget _buildPendingActions() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        ElevatedButton(
+        _buildActionButton(
           onPressed: () {
             _changeOrderStatusWithLoading(recentOrder['_id'], 'Accepted');
             socketUtil.emit('message', 'go_to_store');
           },
-          child: const Text('주문 수락'),
+          label: '주문 수락',
         ),
         const SizedBox(width: 20),
-        ElevatedButton(
+        _buildActionButton(
           onPressed: () {
             _changeOrderStatusWithLoading(recentOrder['_id'], 'Rejected');
           },
-          child: const Text('주문 거부'),
+          label: '주문 거부',
         ),
       ],
     );
   }
 
+  Widget _buildActionButton(
+      {required VoidCallback onPressed, required String label}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+
   Widget _buildFoodLoadedButton() {
     return Center(
-      child: ElevatedButton(
+      child: _buildActionButton(
         onPressed: _handleFoodLoaded,
-        child: const Text('음식 탑재 완료'),
+        label: '음식 탑재 완료',
       ),
     );
   }
 
   Widget _buildAwaitingRobotButton() {
     return Center(
-      child: ElevatedButton(
+      child: _buildActionButton(
         onPressed: () {},
-        child: const Text('아직 로봇이 오고 있어요'),
+        label: '아직 로봇이 오고 있어요',
       ),
     );
   }
@@ -240,9 +259,7 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
           const SizedBox(height: 30),
           _buildOrderItems(),
           const SizedBox(height: 10),
-          Text('총 결제 금액: ${recentOrder['totalCost']}원',
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          _buildTotalCost(),
           const SizedBox(height: 20),
           _buildOrderActions(),
         ],
@@ -254,20 +271,21 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '주문 상태: ${recentOrder['orderStatus']}',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        _buildInfoText('주문 상태: ${recentOrder['orderStatus']}'),
         const SizedBox(height: 10),
-        Text(
-          '배달지: ${recentOrder['deliveryAddress']}',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        _buildInfoText('배달지: ${recentOrder['deliveryAddress']}'),
         const SizedBox(height: 10),
-        Text('주문자: ${recentOrder['userId']}'),
+        _buildInfoText('주문자: ${recentOrder['userId']}'),
         const SizedBox(height: 10),
-        Text('주문시간: ${recentOrder['createdAt']}'),
+        _buildInfoText('주문시간: ${recentOrder['createdAt']}'),
       ],
+    );
+  }
+
+  Widget _buildInfoText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
     );
   }
 
@@ -286,6 +304,13 @@ class _StoreOrderScreenState extends State<StoreOrderScreen> {
           );
         }).toList(),
       ],
+    );
+  }
+
+  Widget _buildTotalCost() {
+    return Text(
+      '총 결제 금액: ${recentOrder['totalCost']}원',
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
     );
   }
 }
